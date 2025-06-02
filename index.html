@@ -1,0 +1,211 @@
+import React, { useState } from 'react';
+
+// Main App component for the AI Agent Generator
+const App = () => {
+    // State variables for agent parameters
+    const [agentName, setAgentName] = useState('');
+    const [purpose, setPurpose] = useState('');
+    const [capabilities, setCapabilities] = useState('');
+    const [constraints, setConstraints] = useState('');
+    const [tools, setTools] = useState('');
+    const [persona, setPersona] = useState('');
+    const [generatedAgent, setGeneratedAgent] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    /**
+     * Handles the generation of the AI agent description.
+     * It constructs a prompt from the user inputs and calls the Gemini API.
+     */
+    const generateAgent = async () => {
+        setError(''); // Clear previous errors
+        setIsLoading(true); // Set loading state
+        setGeneratedAgent(''); // Clear previous generated agent
+
+        // Construct the prompt for the AI model in Spanish
+        const prompt = `Genera una descripción detallada para un agente de IA con las siguientes características:
+        Nombre del Agente: ${agentName || 'No especificado'}
+        Propósito/Meta: ${purpose || 'No especificado'}
+        Capacidades Clave: ${capabilities || 'No especificadas'}
+        Restricciones/Limitaciones: ${constraints || 'No especificadas'}
+        Herramientas que puede usar: ${tools || 'Ninguna'}
+        Personalidad/Tono: ${persona || 'Neutral'}
+
+        La descripción debe ser concisa, clara y enfocarse en cómo el agente operaría dadas estas características.`;
+
+        // Initialize chat history for the API call
+        let chatHistory = [];
+        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+        // Payload for the Gemini API request
+        const payload = { contents: chatHistory };
+        // API key will be provided by the Canvas environment
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+        try {
+            // Make the API call to Gemini
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            // Check if the response was successful
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Error de la API: ${errorData.error.message || response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            // Extract the generated text from the API response
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const text = result.candidates[0].content.parts[0].text;
+                setGeneratedAgent(text); // Update state with the generated agent description
+            } else {
+                setError('No se pudo generar la descripción del agente. Inténtalo de nuevo.');
+            }
+        } catch (err) {
+            console.error('Error al generar el agente:', err);
+            setError(`Error al conectar con el servicio de IA: ${err.message}`);
+        } finally {
+            setIsLoading(false); // Reset loading state
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8 flex items-center justify-center font-sans">
+            <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl p-6 sm:p-8 lg:p-10 border border-blue-200">
+                <h1 className="text-3xl sm:text-4xl font-extrabold text-center text-gray-800 mb-8">
+                    Generador de Agentes IA
+                </h1>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {/* Input field for Agent Name */}
+                    <div className="flex flex-col">
+                        <label htmlFor="agentName" className="text-gray-700 text-sm font-medium mb-2">
+                            Nombre del Agente
+                        </label>
+                        <input
+                            type="text"
+                            id="agentName"
+                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 ease-in-out"
+                            placeholder="Ej: Asistente Personal Inteligente"
+                            value={agentName}
+                            onChange={(e) => setAgentName(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Input field for Purpose/Goal */}
+                    <div className="flex flex-col">
+                        <label htmlFor="purpose" className="text-gray-700 text-sm font-medium mb-2">
+                            Propósito/Meta
+                        </label>
+                        <input
+                            type="text"
+                            id="purpose"
+                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 ease-in-out"
+                            placeholder="Ej: Organizar mi agenda diaria"
+                            value={purpose}
+                            onChange={(e) => setPurpose(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Textarea for Key Capabilities */}
+                    <div className="flex flex-col md:col-span-2">
+                        <label htmlFor="capabilities" className="text-gray-700 text-sm font-medium mb-2">
+                            Capacidades Clave
+                        </label>
+                        <textarea
+                            id="capabilities"
+                            rows="3"
+                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 ease-in-out resize-y"
+                            placeholder="Ej: Procesamiento de lenguaje natural, gestión de tareas, recordatorios"
+                            value={capabilities}
+                            onChange={(e) => setCapabilities(e.target.value)}
+                        ></textarea>
+                    </div>
+
+                    {/* Textarea for Constraints/Limitations */}
+                    <div className="flex flex-col md:col-span-2">
+                        <label htmlFor="constraints" className="text-gray-700 text-sm font-medium mb-2">
+                            Restricciones/Limitaciones
+                        </label>
+                        <textarea
+                            id="constraints"
+                            rows="3"
+                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 ease-in-out resize-y"
+                            placeholder="Ej: No puede acceder a información personal sensible, solo opera en línea"
+                            value={constraints}
+                            onChange={(e) => setConstraints(e.target.value)}
+                        ></textarea>
+                    </div>
+
+                    {/* Input field for Tools it can use */}
+                    <div className="flex flex-col">
+                        <label htmlFor="tools" className="text-gray-700 text-sm font-medium mb-2">
+                            Herramientas que puede usar
+                        </label>
+                        <input
+                            type="text"
+                            id="tools"
+                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 ease-in-out"
+                            placeholder="Ej: Calendario de Google, API de clima"
+                            value={tools}
+                            onChange={(e) => setTools(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Input field for Persona/Tone */}
+                    <div className="flex flex-col">
+                        <label htmlFor="persona" className="text-gray-700 text-sm font-medium mb-2">
+                            Personalidad/Tono
+                        </label>
+                        <input
+                            type="text"
+                            id="persona"
+                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 ease-in-out"
+                            placeholder="Ej: Amigable, profesional, conciso"
+                            value={persona}
+                            onChange={(e) => setPersona(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                {/* Generate Button */}
+                <button
+                    onClick={generateAgent}
+                    className={`w-full py-3 px-6 rounded-lg text-white font-semibold shadow-md transition duration-300 ease-in-out
+                        ${isLoading ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 transform hover:scale-105'}`}
+                    disabled={isLoading}
+                >
+                    {isLoading ? 'Generando...' : 'Generar Agente IA'}
+                </button>
+
+                {/* Error Message Display */}
+                {error && (
+                    <div className="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-center">
+                        <p>{error}</p>
+                    </div>
+                )}
+
+                {/* Generated Agent Display */}
+                {generatedAgent && (
+                    <div className="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner border border-gray-200">
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
+                            Descripción del Agente Generado:
+                        </h2>
+                        <div className="prose max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            {generatedAgent}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default App;
